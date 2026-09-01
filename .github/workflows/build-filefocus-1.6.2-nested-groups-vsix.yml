@@ -1,5 +1,4 @@
 name: Build FileFocus 1.6.2 Nested Groups VSIX
-# Trigger build attempt 1 after workflow activation
 
 on:
   workflow_dispatch:
