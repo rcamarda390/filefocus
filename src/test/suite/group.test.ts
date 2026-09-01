@@ -28,4 +28,22 @@ suite("Group Test Suite", () => {
     assert.strictEqual(group.resources.length, 1);
     assert.strictEqual(group.resources[0].path, "/usr/foo");
   });
+
+  test("nested groups maintain parent relationships and prevent cycles", () => {
+    const parent = new Group("parent");
+    const child = new Group("child");
+    const grandchild = new Group("grandchild");
+
+    parent.addChildGroup(child);
+    child.addChildGroup(grandchild);
+
+    assert.strictEqual(child.parentGroup, parent);
+    assert.strictEqual(grandchild.parentGroup, child);
+    assert.strictEqual(parent.getAllChildGroups().length, 2);
+
+    grandchild.addChildGroup(parent);
+    assert.strictEqual(parent.parentGroup, null);
+    assert.strictEqual(grandchild.childGroups.length, 0);
+  });
+
 });
