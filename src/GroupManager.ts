@@ -188,35 +188,36 @@ export class GroupManager {
    */
   public removeGroup = (id: string) => {
     const group = this.root.get(id);
-    if (!group) {
+    if (!group || group.readonly) {
       return;
     }
 
     const provider = this._storageProvider.get(this.storageMap.get(id) ?? "");
+    const parentGroup = group.parentGroup;
 
-    // Remove from parent if it has one
-    if (group.parentGroup) {
-      group.parentGroup.removeChildGroup(group);
+    if (parentGroup) {
+      parentGroup.removeChildGroup(group);
     } else {
-      // Remove from root groups if it's a root group
       this.rootGroups.delete(id);
     }
 
-    // Recursively remove all child groups
-    const allChildGroups = group.getAllChildGroups();
-    for (const childGroup of allChildGroups) {
+    for (const childGroup of group.getAllChildGroups()) {
       this.root.delete(childGroup.id);
+      this.rootGroups.delete(childGroup.id);
       this.storageMap.delete(childGroup.id);
       if (provider) {
         provider.deleteGroupId(childGroup.id);
       }
     }
 
-    // Remove the group itself
     this.root.delete(id);
     this.storageMap.delete(id);
     if (provider) {
       provider.deleteGroupId(id);
+    }
+
+    if (parentGroup) {
+      this.saveGroup(parentGroup);
     }
   };
 
