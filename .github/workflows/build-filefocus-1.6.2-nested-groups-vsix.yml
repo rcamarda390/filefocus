@@ -1,0 +1,66 @@
+name: Build FileFocus 1.6.2 Nested Groups VSIX
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - master
+  push:
+    branches:
+      - master
+      - feature/nested-groups-vscode-1.98.2
+
+jobs:
+  build-vsix:
+    name: Compile, test on VS Code 1.98.2, and package VSIX
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate extension identity and version
+        run: |
+          node - <<'NODE'
+          const pkg = require("./package.json");
+          const errors = [];
+          if (pkg.name !== "file-focus") errors.push(`name=${pkg.name}`);
+          if (pkg.publisher !== "herdingbits") errors.push(`publisher=${pkg.publisher}`);
+          if (pkg.version !== "1.6.2") errors.push(`version=${pkg.version}`);
+          if (pkg.engines?.vscode !== "^1.84.2") errors.push(`engines.vscode=${pkg.engines?.vscode}`);
+          if (errors.length) {
+            console.error("Unexpected extension manifest:", errors.join(", "));
+            process.exit(1);
+          }
+          console.log("Validated herdingbits.file-focus 1.6.2; install range includes VS Code 1.98.2.");
+          NODE
+          grep -F 'version: "1.98.2"' src/test/runTest.ts
+
+      - name: Compile TypeScript
+        run: npm run compile
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Run extension tests on VS Code 1.98.2
+        run: xvfb-run -a node ./out/test/runTest.js
+
+      - name: Package VSIX
+        run: |
+          npx --yes @vscode/vsce@3.6.0 package             --out file-focus-1.6.2-nested-groups-vscode-1.98.2.vsix
+
+      - name: Upload VSIX artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: file-focus-1.6.2-nested-groups-vscode-1.98.2
+          path: file-focus-1.6.2-nested-groups-vscode-1.98.2.vsix
+          if-no-files-found: error
