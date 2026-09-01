@@ -20,4 +20,30 @@ suite("Group Manager Test Suite", () => {
 
     assert.strictEqual(groupManager.root.size, 1);
   });
+
+  test("moveGroup validates before mutation and prevents circular nesting", () => {
+    const groupManager = new GroupManager();
+    const storage = new EphemeralStorage();
+    groupManager.addStorageProvider(storage);
+
+    const parent = new Group("parent");
+    const child = new Group("child");
+    const grandchild = new Group("grandchild");
+
+    groupManager.addGroup(parent, storage.id);
+    groupManager.addGroup(child, storage.id, parent.id);
+    groupManager.addGroup(grandchild, storage.id, child.id);
+
+    assert.strictEqual(groupManager.moveGroup(child.id, "missing-parent"), false);
+    assert.strictEqual(child.parentGroup, parent);
+    assert.strictEqual(parent.childGroups.includes(child), true);
+
+    assert.strictEqual(groupManager.moveGroup(parent.id, grandchild.id), false);
+    assert.strictEqual(parent.parentGroup, null);
+
+    assert.strictEqual(groupManager.moveGroup(child.id, null), true);
+    assert.strictEqual(child.parentGroup, null);
+    assert.strictEqual(groupManager.rootGroups.has(child.id), true);
+  });
+
 });
